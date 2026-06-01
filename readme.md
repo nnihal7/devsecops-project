@@ -176,13 +176,14 @@ pipeline {
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
     }
+    
     stages {
-
-        stage('Code-Pull') {
-            steps {
-                git branch: 'main', url: 'https://github.com/abhipraydhoble/netflix.git'
+        stage('code-pull'){
+            steps{
+                git branch: 'main', url: 'https://github.com/abhipraydhoble/Project-Netflix-Clone.git'
             }
         }
+        
         stage("Sonarqube Analysis") {
             steps {
                 withSonarQubeEnv('sonar-server') {
@@ -198,37 +199,31 @@ pipeline {
                 }
             }
         }
-        stage('Install Dependencies') {
-            steps {
-                sh "npm install"
-            }
-        }
-       stage('TRIVY FS SCAN') {
+           stage('TRIVY FS SCAN') {
             steps {
                 sh "trivy fs . > trivyfs.txt"
             }
         }
-        stage("Docker Build & Push"){
-            steps{
-                script{
-                   withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker'){   
-                       sh "docker build --build-arg TMDB_V3_API_KEY=020581a34f3ab93b1360a55bea864bd9 -t abhipraydh96/moviesite ."
-                       sh "docker push abhipraydh96/moviesite "
-                    }
-                }
+
+        stage('code-deploy'){
+            steps {
+       	       withCredentials([usernamePassword(credentialsId: 'docker-cred', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUser')]) {
+            	sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPassword}"
+                sh "docker build --build-arg TMDB_V3_API_KEY=eb3428e4a33e89ba1946e24fcb6cfede -t abhipraydh96/netflix ."
+                sh "docker push abhipraydh96/netflix "
+               }
             }
-        }
+        } 
         stage("TRIVY"){
             steps{
-                sh "trivy image abhipraydh96/moviesite > trivyimage.txt" 
+                sh "trivy image abhipraydh96/netflix > trivyimage.txt" 
             }
         }
         stage('Deploy to container'){
             steps{
-                sh 'docker run -d --name netflix -p 8081:80 abhipraydh96/moviesite'
+                sh 'docker run -d --name netflix -p 8081:80 abhipraydh96/netflix'
             }
         }
-        
     }
 }
 ````
